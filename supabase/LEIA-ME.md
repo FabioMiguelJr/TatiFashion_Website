@@ -28,8 +28,9 @@ O desenho completo (tabelas, diagrama, regras de acesso e consultas) está no do
    insert into admins (user_id, nome)
    select id, 'Tati' from auth.users where email = 'email-da-tati@exemplo.com';
    ```
-7. Em **Project Settings** > **API**, copie a **Project URL** e a chave **anon / publishable** e mande no chat.
-   A chave **service_role / secret** não deve ser enviada para ninguém.
+7. Copie a **Project URL** (botão verde **Connect** no topo, ou **Project Settings** > **Data API**) e a
+   **Publishable key** (`sb_publishable_...`, em **Project Settings** > **API Keys**) e mande no chat.
+   A **Secret key** (`sb_secret_...`) não deve ser enviada para ninguém. As chaves "legacy" (anon e service_role) não são usadas.
 8. Troque o CEP de origem (está `00000-000`):
    ```sql
    update config_loja set cep_origem = '00000-000';  -- coloque o CEP de onde os pacotes saem
