@@ -33,7 +33,11 @@ globalThis.fetch = async (url, op = {}) => {
   if (url.includes('/rest/v1/pagamentos')) { db.pagamentos = db.pagamentos.filter((x) => x.provedor_id !== corpo.provedor_id); db.pagamentos.push(corpo); return j(undefined, 201); }
   if (url.endsWith('api.mercadopago.com/v1/orders')) {
     if (mpCreate === 'erro') return j({ errors: [{ code: 'internal_error' }] }, 500);
-    if (mpCreate === 'sem-processing' && corpo.processing_mode) return j({ errors: [{ code: 'unsupported_properties' }] }, 400);
+    const naoAceitos = ['notification_url', ...(mpCreate === 'sem-expiracao' ? ['expiration_time'] : [])].filter((k) => k in corpo);
+    const erros = [];
+    if (naoAceitos.length) erros.push({ code: 'unsupported_properties', message: 'Properties not supported', details: naoAceitos.map((k) => `additionalProperties '$.${k}' not allowed`) });
+    if (corpo.transactions) erros.push({ code: 'required_properties', message: 'Missing properties', details: ["'$.transactions.payments[0]' - missing properties: 'payment_method'"] });
+    if (erros.length) return j({ errors: erros }, 400);
     return j({ id: 'ORDTST01', status: 'created', checkout_url: 'https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=1' }, 201);
   }
   if (url.includes('api.mercadopago.com/v1/orders/')) return mpOrder ? j(mpOrder) : j({}, 404);
@@ -60,12 +64,13 @@ ok(mp.op.headers['X-Idempotency-Key'].startsWith(d.pedido_id), 'X-Idempotency-Ke
 ok(mp.corpo.total_amount === '231.20' && mp.corpo.items.reduce((s, i) => s + Number(i.unit_price) * i.quantity, 0).toFixed(2) === '231.20', 'itens somam o total (com frete)');
 ok(mp.corpo.payer.identification.number === '12345678909', 'CPF só com dígitos');
 ok(mp.corpo.config.online.success_url.startsWith('https://loja.exemplo/obrigado.html?pedido='), 'volta para obrigado.html');
-ok(mp.corpo.notification_url === 'https://x.supabase.co/functions/v1/webhook-mercadopago', 'notification_url aponta para o webhook');
+ok(!('notification_url' in mp.corpo) && !('transactions' in mp.corpo), 'não manda notification_url nem transactions (recusados pelo Checkout Pro)');
 ok(db.pedidos[0].mp_order_id === 'ORDTST01', 'guarda o id da order');
 
-log.length = 0; mpCreate = 'sem-processing';
+log.length = 0; mpCreate = 'sem-expiracao';
 r = await criar(req(base)); d = await r.json();
-ok(r.status === 200 && log.filter((l) => l.url.endsWith('/v1/orders')).length === 2, 'tenta outro formato se o Mercado Pago recusar o corpo');
+const tentativas = log.filter((l) => l.url.endsWith('/v1/orders'));
+ok(r.status === 200 && tentativas.length === 2 && !('expiration_time' in tentativas[1].corpo), 'campo recusado pelo Mercado Pago é removido e tenta de novo');
 mpCreate = 'erro';
 r = await criar(req(base)); d = await r.json();
 ok(r.status === 502 && db.pedidos.at(-1).status === 'cancelado', 'falha no Mercado Pago: pedido cancelado e erro claro');

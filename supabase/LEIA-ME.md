@@ -106,6 +106,11 @@ ou boleto). Quando o pagamento é aprovado, o Mercado Pago avisa a função `web
    - `criar-pedido`: cole o conteúdo de `TatyFashion\criar-pedido.txt`
    - `webhook-mercadopago`: cole o conteúdo de `TatyFashion\webhook-mercadopago.txt`
    - Nas duas, desligue **Verify JWT with legacy secret** em Details e salve.
+   - **Aviso de pagamento (webhook):** na aplicação do Mercado Pago da conta Vendedor de teste ("TatiFashion Teste"),
+     abra **Configuração de webhooks**, cole a URL
+     `https://igksrbrohmeeezufjynv.supabase.co/functions/v1/webhook-mercadopago`, marque o evento de **Order**
+     (Orders) e salve. O Checkout Pro não aceita o endereço de aviso dentro do pedido, então ele precisa ficar
+     cadastrado aqui. (Mesmo sem o aviso, a página `obrigado.html` confere o pagamento quando a cliente volta.)
 6. **Testar uma compra:**
    1. Abra `TatiFashionWeb\sacola.html` com uma peça, preencha nome, telefone e endereço e toque em **Pagar agora**.
    2. Na página do Mercado Pago, entre com a conta **Comprador** de teste (ou pague como visitante) e use o cartão

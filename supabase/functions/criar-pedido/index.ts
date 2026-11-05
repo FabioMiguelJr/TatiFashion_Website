@@ -54,18 +54,26 @@ async function banco(caminho: string, init: RequestInit = {}) {
   return json;
 }
 
-// Cria a order no Mercado Pago. A documentação da API de Orders tem duas versões do corpo
-// (guia x referência), então tentamos da mais completa para a mais simples.
+// Cria a order no Mercado Pago. Se a API recusar algum campo (400 unsupported_properties /
+// required_properties), removemos o campo citado no erro e tentamos de novo (até 4 vezes).
+// deno-lint-ignore no-explicit-any
+function removerCampo(obj: any, caminho: string) {
+  const partes = caminho.replace(/^\$\.?/, "").split(".").filter(Boolean);
+  let alvo = obj;
+  for (let i = 0; i < partes.length - 1; i++) {
+    alvo = alvo?.[partes[i].replace(/\[\d+\]$/, "")];
+    if (!alvo) return false;
+  }
+  const ultimo = partes.at(-1)?.replace(/\[\d+\]$/, "");
+  if (!ultimo || !(ultimo in alvo)) return false;
+  delete alvo[ultimo];
+  return true;
+}
 // deno-lint-ignore no-explicit-any
 async function criarOrderMP(base: any, idempotencia: string) {
-  const variantes = [
-    (b: any) => b,
-    (b: any) => { const c = { ...b }; delete c.processing_mode; return c; },
-    (b: any) => { const c = { ...b }; delete c.transactions; return c; },
-    (b: any) => { const c = { ...b }; delete c.processing_mode; delete c.transactions; return c; },
-  ];
+  const corpo = JSON.parse(JSON.stringify(base));
   let ultimoErro = "";
-  for (let i = 0; i < variantes.length; i++) {
+  for (let i = 0; i < 4; i++) {
     const r = await fetch("https://api.mercadopago.com/v1/orders", {
       method: "POST",
       headers: {
@@ -74,13 +82,25 @@ async function criarOrderMP(base: any, idempotencia: string) {
         Authorization: `Bearer ${env("MP_ACCESS_TOKEN")}`,
         "X-Idempotency-Key": `${idempotencia}-${i}`,
       },
-      body: JSON.stringify(variantes[i](base)),
+      body: JSON.stringify(corpo),
     });
-    const corpo = await r.json().catch(() => ({}));
-    if (r.ok) return corpo;
-    ultimoErro = `${r.status} ${JSON.stringify(corpo).slice(0, 500)}`;
+    // deno-lint-ignore no-explicit-any
+    const resp: any = await r.json().catch(() => ({}));
+    if (r.ok) return resp;
+    ultimoErro = `${r.status} ${JSON.stringify(resp).slice(0, 500)}`;
     console.error("Mercado Pago recusou a order (tentativa " + (i + 1) + "):", ultimoErro);
-    if (r.status !== 400) break; // só vale tentar outro formato quando o problema é o corpo
+    if (r.status !== 400) break;
+    let mudou = false;
+    for (const e of resp.errors || []) {
+      for (const d of e.details || []) {
+        const m = String(d).match(/'(\$[^']*)'/);
+        if (!m) continue;
+        // campo não aceito: remove; campo obrigatório faltando dentro de transactions: remove o bloco transactions
+        if (e.code === "unsupported_properties") mudou = removerCampo(corpo, m[1]) || mudou;
+        if (e.code === "required_properties" && m[1].startsWith("$.transactions")) mudou = removerCampo(corpo, "$.transactions") || mudou;
+      }
+    }
+    if (!mudou) break;
   }
   throw new Error("Mercado Pago: " + ultimoErro);
 }
@@ -202,8 +222,7 @@ export async function handler(req: Request): Promise<Response> {
       ...(cliente.cpf.length === 11 ? { identification: { type: "CPF", number: cliente.cpf } } : {}),
     },
     items: itensMP,
-    transactions: { payments: [{ amount: dinheiro(resposta.total) }] },
-    notification_url: `${env("SUPABASE_URL")}/functions/v1/webhook-mercadopago`,
+    // notification_url e transactions não são aceitos no Checkout Pro (o aviso é configurado na aplicação do Mercado Pago)
     expiration_time: "P3D",
     config: {
       online: { success_url: volta("ok"), pending_url: volta("pendente"), failure_url: volta("falha"), auto_return: "approved" },
