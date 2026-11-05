@@ -55,12 +55,18 @@ O desenho completo (tabelas, diagrama, regras de acesso e consultas) está no do
 2. No Supabase, abra **Edge Functions** > **Secrets** e adicione:
    - `ME_TOKEN` = o token do Melhor Envio
    - `ME_AMBIENTE` = `sandbox` (só troque para `producao` na fase 6)
-3. Abra **Edge Functions** > **Deploy a new function** > **Via Editor**.
-   - Nome da função: `calcular-frete` (exatamente assim)
-   - Apague o código de exemplo e cole todo o conteúdo de `supabase/functions/calcular-frete/index.ts`
-   - Clique em **Deploy function**
-4. Na função criada, abra **Details** (ou **Settings**) e **desligue** a opção **Verify JWT** (ou "Enforce JWT
-   verification"). Salve. Sem isso o site recebe erro 401, porque ele usa a Publishable key.
+3. Crie a função:
+   1. No Supabase, abra **Edge Functions** > **Functions** > **Deploy a new function** > **Via Editor**.
+      Abre a tela "Create new edge function", com um arquivo `index.ts` de exemplo.
+   2. No seu computador, abra `TatyFashion\calcular-frete.txt` no Bloco de Notas (é o mesmo código de
+      `TatiFashionWeb\supabase\functions\calcular-frete\index.ts`; o `.ts` o Windows pode tentar abrir como vídeo).
+      Copie tudo com Ctrl+A e Ctrl+C.
+   3. Volte ao Supabase, clique dentro do código de exemplo, apague tudo com Ctrl+A e Delete e cole com Ctrl+V.
+   4. Embaixo, em **Function name**, troque o nome sugerido (ex.: `smooth-action`) por `calcular-frete`.
+   5. Clique em **Deploy function** e espere aparecer que a função foi publicada.
+4. Desligue a verificação de JWT: na página da função `calcular-frete`, abra **Details** e desligue
+   **Verify JWT with legacy secret** (ou "Enforce JWT verification"). Clique em **Save changes**.
+   Sem isso o site recebe erro 401, porque ele usa a Publishable key.
 5. Confira se o CEP de origem já está gravado (item 8 da fase 1).
 6. Teste: abra `sacola.html` com uma peça na sacola, escolha "Receber pelos Correios" e digite um CEP.
    Devem aparecer PAC e SEDEX com preço e prazo.
