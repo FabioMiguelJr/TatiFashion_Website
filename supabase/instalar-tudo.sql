@@ -313,6 +313,13 @@ revoke execute on function cancelar_pedidos_vencidos() from public, anon, authen
 grant  execute on function cancelar_pedidos_vencidos() to service_role;
 
 
+-- ===== 20261105000004_mercadopago_orders.sql =====
+-- TatiFashion: guarda o id da order do Mercado Pago (API de Orders) em cada pedido
+alter table pedidos add column mp_order_id text unique;
+alter table pedidos add column mp_status text;  -- último status visto no Mercado Pago
+create index pedidos_external_idx on pedidos (numero);
+
+
 -- ===== seed.sql =====
 -- TatiFashion: carga inicial gerada por scripts/gerar-seed.js a partir de data/produtos.js
 -- Não edite à mão: altere data/produtos.js e rode o script de novo.

@@ -5,3 +5,9 @@ project_id = "igksrbrohmeeezufjynv"
 
 [functions.calcular-frete]
 verify_jwt = false
+
+[functions.criar-pedido]
+verify_jwt = false
+
+[functions.webhook-mercadopago]
+verify_jwt = false

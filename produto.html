@@ -33,7 +33,9 @@
       // tamanho (ou cor) sem nenhuma peça em estoque aparece riscado
       const semEstoque = (tipo, v) => tipo === "tamanho" ? p.cores.every((c) => estoque(p, v, c) <= 0) : p.tamanhos.every((t) => estoque(p, t, v) <= 0);
       const botoes = (lista, tipo) => lista.map((v) => '<button class="opcao-btn' + (escolha[tipo] === v ? " ativo" : "") + (semEstoque(tipo, v) ? " esgotado" : "") + '" data-tipo="' + tipo + '" data-valor="' + esc(v) + '">' + esc(v) + '</button>').join("");
-      const parcela = p.preco >= 60 ? '<p class="parcelas">ou 2x de ' + reais(p.preco / 2) + ' (combinado no WhatsApp)</p>' : '<p class="parcelas">Pagamento combinado pelo WhatsApp</p>';
+      const parcela = window.SUPABASE && window.SUPABASE.url
+        ? '<p class="parcelas">PIX, boleto ou cartão em até 6x pelo Mercado Pago</p>'
+        : (p.preco >= 60 ? '<p class="parcelas">ou 2x de ' + reais(p.preco / 2) + ' (combinado no WhatsApp)</p>' : '<p class="parcelas">Pagamento combinado pelo WhatsApp</p>');
       const relacionados = PRODUTOS.filter((x) => x.categoria === p.categoria && x.id !== p.id).slice(0, 4);
 
       alvo.innerHTML =

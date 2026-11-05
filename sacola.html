@@ -29,12 +29,14 @@
       const ICONE_WHATS = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg>';
       const CORREIOS = "Receber pelos Correios";
       const ENTREGAS = [CORREIOS, "Retirar com a Tati", "Pegar na feirinha / igreja"];
-      const CAMPOS = ["nome", "local", "obs", "cep", "rua", "numero", "complemento", "bairro", "cidade", "uf"];
+      const CAMPOS = ["nome", "telefone", "email", "local", "obs", "cep", "rua", "numero", "complemento", "bairro", "cidade", "uf"];
       const dados = lerJSON("tf_comprador", {});
       if (!ENTREGAS.includes(dados.entrega)) dados.entrega = CORREIOS;
       // frete: { cep, assinatura, estado: "calculando" | "ok" | "erro", opcoes, escolhido, msg }
       let frete = { estado: null };
       let enviado = false;
+      let numeroPedido = null;
+      const CODIGO_ENTREGA = { [CORREIOS]: "correios", "Retirar com a Tati": "retirada", "Pegar na feirinha / igreja": "feirinha" };
 
       const soDigitos = (s) => String(s || "").replace(/\D/g, "");
       const assinatura = () => Sacola.itens().map((i) => i.id + ":" + i.qtd).join("|");
@@ -44,7 +46,7 @@
 
       function montarMensagem() {
         const itens = Sacola.itens();
-        const linhas = ["Olá! Gostaria de fazer este pedido pelo site da *TatiFashion Modas*:", ""];
+        const linhas = ["Olá! Gostaria de fazer este pedido pelo site da *TatiFashion Modas*" + (numeroPedido ? " (pedido nº " + numeroPedido + ")" : "") + ":", ""];
         itens.forEach((i, n) => {
           const p = Sacola.produto(i.id);
           linhas.push((n + 1) + ") *" + p.nome + "*");
@@ -59,6 +61,7 @@
         }
         linhas.push("*Total: " + reais(totalGeral()) + "*" + (dados.entrega === CORREIOS && !f ? " + frete" : ""), "");
         linhas.push("*Nome:* " + dados.nome);
+        if (dados.telefone) linhas.push("*Telefone:* " + dados.telefone);
         linhas.push("*Entrega:* " + dados.entrega);
         if (dados.entrega === CORREIOS) {
           linhas.push("*Endereço:* " + dados.rua + ", " + dados.numero + (dados.complemento ? " - " + dados.complemento : ""));
@@ -132,13 +135,17 @@
             '<p style="margin:14px 0 0"><a class="ver-tudo" href="catalogo.html">+ Continuar comprando</a></p></div>' +
             '<div class="resumo">' +
               '<div id="resumo">' + blocoResumo() + '</div>' +
-              '<p class="nota" style="text-align:left;margin:4px 0 0">O pagamento é combinado com a vendedora pelo WhatsApp.</p>' +
+              '<p class="nota" style="text-align:left;margin:4px 0 0">Pague no site com PIX, cartão (até 6x) ou boleto, ou combine com a vendedora pelo WhatsApp.</p>' +
               '<form class="form" id="form" novalidate>' +
                 campo("nome", "Seu nome *", 'autocomplete="name"') +
+                campo("telefone", "WhatsApp / telefone *", 'type="tel" inputmode="tel" autocomplete="tel" placeholder="(21) 99999-9999"') +
+                campo("email", "E-mail (para o comprovante)", 'type="email" inputmode="email" autocomplete="email"') +
                 '<div class="campo"><label>Como prefere receber?</label><div class="radios">' + ENTREGAS.map(radio).join("") + '</div></div>' +
                 '<div id="endereco">' + blocoEndereco() + '</div>' +
                 '<div class="campo"><label for="obs">Observação</label><textarea id="obs" placeholder="Ex.: prefiro pagar no Pix">' + esc(dados.obs || "") + '</textarea></div>' +
-                '<button class="botao whats largo" type="submit">' + ICONE_WHATS + ' Enviar pedido pelo WhatsApp</button>' +
+                (SUPA.url ? '<button class="botao largo" type="submit" data-canal="site" id="pagar">Pagar agora</button>' +
+                '<p class="nota" style="margin-top:-6px">Você vai para a página segura do Mercado Pago.</p>' : '') +
+                '<button class="botao whats largo' + (SUPA.url ? ' secundario-whats' : '') + '" type="submit" data-canal="whatsapp">' + ICONE_WHATS + ' Enviar pedido pelo WhatsApp</button>' +
                 '<p class="nota">O WhatsApp vai abrir com a mensagem pronta. É só tocar em enviar.</p>' +
               '</form>' +
               (enviado ? '<div class="enviado"><p>Conseguiu enviar o pedido?</p><div class="acoes"><button class="botao" id="limpar">Sim, esvaziar sacola</button><button class="botao secundario" id="manter">Ainda não</button></div></div>' : '') +
@@ -158,7 +165,7 @@
         CAMPOS.forEach((c) => { const el = f.querySelector("#" + c); if (el) dados[c] = el.value.trim(); });
         if (dados.uf) dados.uf = dados.uf.toUpperCase();
         dados.entrega = (f.querySelector("input[name=entrega]:checked") || {}).value || dados.entrega;
-        const salvar = {}; ["nome", "local", "entrega", "cep", "rua", "numero", "complemento", "bairro", "cidade", "uf"].forEach((c) => (salvar[c] = dados[c]));
+        const salvar = {}; ["nome", "telefone", "email", "local", "entrega", "cep", "rua", "numero", "complemento", "bairro", "cidade", "uf"].forEach((c) => (salvar[c] = dados[c]));
         gravarJSON("tf_comprador", salvar);
       }
 
@@ -264,13 +271,39 @@
         return id;
       }
 
-      alvo.addEventListener("submit", (e) => {
+      const corpoPedido = (canal) => ({
+        canal,
+        entrega: CODIGO_ENTREGA[dados.entrega],
+        frete_servico: freteEscolhido() ? freteEscolhido().servico : null,
+        cliente: { nome: dados.nome, telefone: dados.telefone, email: dados.email, observacao: dados.obs },
+        endereco: dados.entrega === CORREIOS ? { cep: dados.cep, rua: dados.rua, numero: dados.numero, complemento: dados.complemento, bairro: dados.bairro, cidade: dados.cidade, uf: dados.uf } : {},
+        itens: Sacola.itens().map((i) => ({ id: i.id, tamanho: i.tamanho, cor: i.cor, qtd: i.qtd }))
+      });
+      async function enviarPedido(canal, ms) {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), ms);
+        try {
+          const r = await fetch(SUPA.url + "/functions/v1/criar-pedido", {
+            method: "POST", signal: ctrl.signal,
+            headers: { "Content-Type": "application/json", apikey: SUPA.chave },
+            body: JSON.stringify(corpoPedido(canal))
+          });
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(d.erro || "Erro " + r.status);
+          return d;
+        } finally { clearTimeout(t); }
+      }
+
+      alvo.addEventListener("submit", async (e) => {
         e.preventDefault();
+        const canal = (e.submitter && e.submitter.dataset.canal) || "whatsapp";
         guardarCampos();
         alvo.querySelectorAll(".campo.erro").forEach((c) => c.classList.remove("erro"));
         alvo.querySelectorAll(".msg-erro").forEach((c) => (c.textContent = ""));
         const faltando = [];
         if (!dados.nome) faltando.push(erro("nome", "Informe seu nome para a vendedora saber quem é."));
+        if (canal === "site" && soDigitos(dados.telefone).length < 10) faltando.push(erro("telefone", "Informe o telefone com DDD."));
+        if (dados.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(dados.email)) faltando.push(erro("email", "Confira o e-mail."));
         if (dados.entrega === CORREIOS) {
           if (soDigitos(dados.cep).length !== 8) faltando.push(erro("cep", "Informe o CEP com 8 números."));
           if (!dados.rua) faltando.push(erro("rua", "Informe a rua."));
@@ -279,11 +312,38 @@
           if (!dados.cidade) faltando.push(erro("cidade", "Informe a cidade."));
           if (!/^[A-Z]{2}$/.test(dados.uf || "")) faltando.push(erro("uf", "UF com 2 letras."));
           if (!faltando.length && frete.estado === "calculando") { TF.avisar("Aguarde o cálculo do frete."); return; }
+          if (!faltando.length && canal === "site" && !freteEscolhido()) { TF.avisar("Não conseguimos calcular o frete. Feche o pedido pelo WhatsApp."); return; }
         }
         if (faltando.length) { document.getElementById(faltando[0]).focus(); return; }
+
+        const botoes = alvo.querySelectorAll("button[type=submit]");
+        const original = e.submitter ? e.submitter.innerHTML : "";
+        const travar = (sim, txt) => { botoes.forEach((b) => (b.disabled = sim)); if (e.submitter) e.submitter.innerHTML = sim ? txt : original; };
+
+        if (canal === "site") {
+          travar(true, "Abrindo o pagamento…");
+          try {
+            const d = await enviarPedido("site", 25000);
+            gravarJSON("tf_ultimo_pedido", { pedido_id: d.pedido_id, numero: d.numero, total: d.total, em: Date.now() });
+            location.href = d.pagar_url;
+          } catch (err) {
+            travar(false);
+            TF.avisar(err.name === "AbortError" ? "O pagamento demorou para abrir. Tente de novo." : err.message);
+          }
+          return;
+        }
+
         if (!LOJA.whatsapp) { TF.avisar("Número de WhatsApp da loja não configurado."); return; }
+        // grava o pedido no banco para a Tati ver no painel (se falhar, manda o WhatsApp mesmo assim)
+        numeroPedido = null;
+        const janela = window.open("", "_blank");
+        if (SUPA.url) {
+          travar(true, "Preparando a mensagem…");
+          try { numeroPedido = (await enviarPedido("whatsapp", 6000)).numero; } catch (err) { console.warn("Pedido não gravado no banco:", err); }
+          travar(false);
+        }
         const url = "https://wa.me/" + LOJA.whatsapp + "?text=" + encodeURIComponent(montarMensagem());
-        window.open(url, "_blank") || (location.href = url);
+        if (janela && !janela.closed) janela.location.href = url; else location.href = url;
         enviado = true; render();
       });
 

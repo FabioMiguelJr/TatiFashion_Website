@@ -247,3 +247,5 @@ button { font: inherit; cursor: pointer; }
 .duas-colunas .campo:last-child input[maxlength="2"] { text-transform: uppercase; }
 .radio small { display: block; font-size: .78rem; }
 .radio b { color: var(--vinho); white-space: nowrap; }
+.botao.whats.secundario-whats { background: transparent; color: #1a8d48; border: 1.5px solid #25a35a; }
+.botao.whats.secundario-whats svg { fill: currentColor; }

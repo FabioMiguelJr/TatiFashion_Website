@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#b0386a">
+  <link rel="icon" href="img/flor.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="data/produtos.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+  <title>Pedido recebido · TatiFashion Modas</title>
+</head>
+<body>
+  <div id="topo"></div>
+  <main class="container" style="padding-bottom:32px">
+    <div class="vazio" id="status" style="padding-top:28px">
+      <p>Conferindo o seu pagamento…</p>
+    </div>
+  </main>
+  <div id="rodape"></div>
+  <script>
+    TF.pronto(() => {
+      const { esc, reais, Sacola, lerJSON, LOJA } = TF;
+      const SUPA = window.SUPABASE || {};
+      const q = new URLSearchParams(location.search);
+      const ultimo = lerJSON("tf_ultimo_pedido", {});
+      const pedidoId = q.get("pedido") || ultimo.pedido_id;
+      const numero = q.get("n") || ultimo.numero;
+      const alvo = document.getElementById("status");
+      const whats = (txt) => LOJA.whatsapp ? '<a class="botao whats" href="https://wa.me/' + LOJA.whatsapp + '?text=' + encodeURIComponent(txt) + '" target="_blank" rel="noopener">Falar com a Tati no WhatsApp</a>' : "";
+      const mostrar = (titulo, texto, extra = "") => {
+        alvo.innerHTML = '<h1 class="pagina-titulo">' + esc(titulo) + '</h1><p>' + texto + '</p><div class="acoes" style="display:flex;flex-direction:column;gap:10px;align-items:center;margin-top:18px">' + extra + '<a class="botao secundario" href="catalogo.html">Continuar comprando</a></div>';
+      };
+      const textos = {
+        pago: () => { Sacola.limpar(); mostrar("Pagamento aprovado! 💕", "Obrigada! Seu pedido <b>nº " + esc(numero) + "</b> foi confirmado. A Tati vai separar as peças e te avisar quando enviar.", whats("Oi! Acabei de pagar o pedido nº " + numero + " no site.")); },
+        pendente: () => { Sacola.limpar(); mostrar("Pedido nº " + numero + " recebido", "Seu pagamento ainda está sendo processado. Se escolheu PIX ou boleto, pague pelo código do Mercado Pago. Quando o pagamento for confirmado, a Tati vai separar as peças.", whats("Oi! Fiz o pedido nº " + numero + " no site e estou finalizando o pagamento.")); },
+        recusado: () => mostrar("Pagamento não aprovado", "O pagamento do pedido nº " + esc(numero) + " não foi aprovado. As peças continuam na sua sacola: você pode tentar de novo com outro cartão ou PIX.", '<a class="botao" href="sacola.html">Voltar para a sacola</a>'),
+        cancelado: () => mostrar("Pedido cancelado", "O pedido nº " + esc(numero) + " foi cancelado. Se precisar de ajuda, fale com a Tati.", whats("Oi! Tive um problema com o pedido nº " + numero + "."))
+      };
+      if (!pedidoId || !SUPA.url) { mostrar("Pedido", "Não encontramos o pedido. Se você já pagou, fale com a Tati.", whats("Oi! Fiz um pedido no site.")); return; }
+
+      let tentativas = 0;
+      async function conferir() {
+        tentativas++;
+        let s = null;
+        try {
+          const r = await fetch(SUPA.url + "/functions/v1/webhook-mercadopago", {
+            method: "POST", headers: { "Content-Type": "application/json", apikey: SUPA.chave },
+            body: JSON.stringify({ pedido_id: pedidoId })
+          });
+          const d = await r.json();
+          if (r.ok) s = d.status === "pago" || d.pagamento === "pago" ? "pago" : d.status === "cancelado" ? "cancelado" : d.pagamento === "recusado" ? "recusado" : "pendente";
+        } catch {}
+        const voltou = q.get("r");
+        if (!s) s = voltou === "falha" ? "recusado" : "pendente";
+        if (s === "pendente" && voltou === "ok" && tentativas < 6) { setTimeout(conferir, 3000); return; } // aprovação pode levar alguns segundos
+        if (s === "recusado" && voltou !== "falha" && tentativas < 3) { setTimeout(conferir, 3000); return; }
+        textos[s]();
+      }
+      conferir();
+    });
+  </script>
+</body>
+</html>

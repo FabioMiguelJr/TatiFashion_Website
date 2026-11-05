@@ -10,6 +10,8 @@ O desenho completo (tabelas, diagrama, regras de acesso e consultas) está no do
 | `migrations/20261105000001_tabelas.sql` | As 10 tabelas e os índices |
 | `migrations/20261105000002_seguranca.sql` | Regras de acesso (RLS) e a pasta de fotos `produtos` |
 | `migrations/20261105000003_funcoes.sql` | `criar_pedido`, baixa de estoque ao pagar, cancelamento de pedidos vencidos |
+| `migrations/20261105000004_mercadopago_orders.sql` | Colunas do Mercado Pago (API de Orders) no pedido |
+| `functions/` | Funções de servidor: `calcular-frete`, `criar-pedido`, `webhook-mercadopago` |
 | `seed.sql` | As 27 peças atuais (gerado a partir de `data/produtos.js`) |
 | `instalar-tudo.sql` | Tudo acima num arquivo só, para colar no Supabase |
 | `teste/` | Testes automáticos (só para rodar num PostgreSQL local) |
@@ -74,6 +76,42 @@ O desenho completo (tabelas, diagrama, regras de acesso e consultas) está no do
 Peso e medidas: cada peça começa com 300 g e caixa de 30 x 20 x 5 cm. Para mudar uma peça, edite as colunas
 `peso_g`, `altura_cm`, `largura_cm` e `comprimento_cm` em **Table Editor** > **produtos**.
 Frete grátis a partir de um valor: `update config_loja set frete_gratis_acima = 199.90;`
+
+## Fase 4: pagamento (Mercado Pago, API de Orders)
+
+O site cria o pedido no banco e manda a cliente para a página segura do Mercado Pago (PIX, cartão em até 6x
+ou boleto). Quando o pagamento é aprovado, o Mercado Pago avisa a função `webhook-mercadopago`, o pedido vira
+"pago" e o estoque baixa sozinho. O botão do WhatsApp continua funcionando, e agora também grava o pedido.
+
+1. **Banco:** no SQL Editor, rode o arquivo `TatyFashion\fase4-banco.sql`
+   (é o `supabase/migrations/20261105000004_mercadopago_orders.sql`). Não rode o `instalar-tudo.sql` de novo.
+2. **Contas de teste do Mercado Pago:** na sua aplicação em **Suas integrações**, abra **Contas de teste** e crie
+   uma conta **Vendedor** e uma **Comprador**, as duas do Brasil. Anote o usuário e a senha de cada uma.
+3. **Access Token de teste:** a API de Orders não aceita as "credenciais de teste". O jeito certo de testar é
+   usar as **credenciais de produção da conta Vendedor de teste**:
+   1. Abra uma janela anônima (Ctrl+Shift+N) e entre em **https://www.mercadopago.com.br/developers** com o
+      usuário e a senha da conta **Vendedor** de teste.
+   2. Crie uma aplicação nela (Checkout Pro, API de Orders), do mesmo jeito que você fez na sua conta.
+   3. Abra **Credenciais de produção** e copie o **Access Token** (começa com `APP_USR-`). Não mande no chat.
+4. **Segredos no Supabase** (Edge Functions > Secrets):
+   - `TF_SECRET_KEY` = a **Secret key** do Supabase (`sb_secret_...`, em Project Settings > API Keys)
+   - `MP_ACCESS_TOKEN` = o Access Token do passo 3
+   - `SITE_URL` = `https://fabiomigueljr.github.io/TatiFashion_Website/`
+5. **Publicar as duas funções**, do mesmo jeito que a `calcular-frete`:
+   - `criar-pedido`: cole o conteúdo de `TatyFashion\criar-pedido.txt`
+   - `webhook-mercadopago`: cole o conteúdo de `TatyFashion\webhook-mercadopago.txt`
+   - Nas duas, desligue **Verify JWT with legacy secret** em Details e salve.
+6. **Testar uma compra:**
+   1. Abra `TatiFashionWeb\sacola.html` com uma peça, preencha nome, telefone e endereço e toque em **Pagar agora**.
+   2. Na página do Mercado Pago, entre com a conta **Comprador** de teste (ou pague como visitante) e use o cartão
+      de teste Mastercard `5480 8328 0103 3311`, código `123`, validade `11/30`, nome do titular `APRO`
+      e CPF `12345678909`. O nome `OTHE` simula um cartão recusado.
+   3. No Supabase, abra **Table Editor** > **pedidos**: o pedido deve estar com status `pago`, e em
+      **pagamentos** deve aparecer o pagamento.
+   4. Enquanto o branch não estiver publicado (fase 6), a volta do Mercado Pago cai numa página "404" do site,
+      porque a página `obrigado.html` ainda não existe no site publicado. Isso é esperado e o pagamento vale mesmo assim.
+
+Quando der algum erro, abra **Edge Functions** > a função > **Logs** e me mande um print.
 
 ## Quando mudar os produtos em `data/produtos.js`
 
