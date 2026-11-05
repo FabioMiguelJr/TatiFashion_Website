@@ -39,7 +39,19 @@ O desenho completo (tabelas, diagrama, regras de acesso e consultas) está no do
 ## Fase 3: frete (Melhor Envio)
 
 1. Crie a conta de teste em **https://sandbox.melhorenvio.com.br** e gere um token
-   (veja `Passo-a-passo-contas.md`, parte 3). Copie o token.
+   (veja `Passo-a-passo-contas.md`, parte 3), marcando só estas permissões:
+   - `shipping-calculate` (cotação de fretes)
+   - `shipping-companies` (consulta de transportadoras)
+   - `cart-read` e `cart-write` (carrinho de etiquetas)
+   - `shipping-checkout` (compra da etiqueta com o saldo da carteira)
+   - `shipping-generate`, `shipping-preview` e `shipping-print` (gerar, ver e imprimir a etiqueta)
+   - `shipping-tracking` (rastreio)
+   - `shipping-cancel` (cancelar etiqueta)
+   - `orders-read` (ver as etiquetas)
+
+   Não marque as outras. A cotação, usada agora na fase 3, só precisa de `shipping-calculate`. As demais servem para a Tati gerar e imprimir as etiquetas pelo painel, na fase 5.
+
+   Copie o token.
 2. No Supabase, abra **Edge Functions** > **Secrets** e adicione:
    - `ME_TOKEN` = o token do Melhor Envio
    - `ME_AMBIENTE` = `sandbox` (só troque para `producao` na fase 6)
