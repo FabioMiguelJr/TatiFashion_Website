@@ -1,0 +1,7 @@
+# Configuração usada pelo Supabase CLI ("supabase functions deploy").
+# As funções são chamadas pelo site com a Publishable key, que não é um JWT,
+# então a verificação de JWT do Supabase fica desligada. Cada função faz as próprias checagens.
+project_id = "igksrbrohmeeezufjynv"
+
+[functions.calcular-frete]
+verify_jwt = false

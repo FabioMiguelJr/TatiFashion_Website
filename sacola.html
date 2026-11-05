@@ -24,12 +24,25 @@
   <script>
     TF.pronto(() => {
       const { LOJA, esc, reais, Sacola, lerJSON, gravarJSON } = TF;
+      const SUPA = window.SUPABASE || {};
       const alvo = document.getElementById("conteudo");
       const ICONE_WHATS = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg>';
+      const CORREIOS = "Receber pelos Correios";
+      const ENTREGAS = [CORREIOS, "Retirar com a Tati", "Pegar na feirinha / igreja"];
+      const CAMPOS = ["nome", "local", "obs", "cep", "rua", "numero", "complemento", "bairro", "cidade", "uf"];
       const dados = lerJSON("tf_comprador", {});
+      if (!ENTREGAS.includes(dados.entrega)) dados.entrega = CORREIOS;
+      // frete: { cep, assinatura, estado: "calculando" | "ok" | "erro", opcoes, escolhido, msg }
+      let frete = { estado: null };
       let enviado = false;
 
-      function montarMensagem(f) {
+      const soDigitos = (s) => String(s || "").replace(/\D/g, "");
+      const assinatura = () => Sacola.itens().map((i) => i.id + ":" + i.qtd).join("|");
+      const prazoTxt = (o) => o.prazo ? " · " + o.prazo + (o.prazo === 1 ? " dia útil" : " dias úteis") : "";
+      const freteEscolhido = () => dados.entrega === CORREIOS && frete.estado === "ok" ? frete.opcoes.find((o) => o.servico === frete.escolhido) : null;
+      const totalGeral = () => Sacola.total() + (freteEscolhido() ? freteEscolhido().valor : 0);
+
+      function montarMensagem() {
         const itens = Sacola.itens();
         const linhas = ["Olá! Gostaria de fazer este pedido pelo site da *TatiFashion Modas*:", ""];
         itens.forEach((i, n) => {
@@ -39,12 +52,55 @@
           linhas.push("   " + i.qtd + " x " + reais(p.preco) + " = " + reais(i.qtd * p.preco));
           if (/^https?:/.test(location.protocol)) linhas.push("   " + new URL("produto.html?id=" + encodeURIComponent(p.id), location.href).href);
         });
-        linhas.push("", "*Total: " + reais(Sacola.total()) + "* (" + Sacola.quantidade() + (Sacola.quantidade() === 1 ? " peça)" : " peças)"), "");
-        linhas.push("*Nome:* " + f.nome);
-        if (f.local) linhas.push("*Bairro/Cidade:* " + f.local);
-        linhas.push("*Entrega:* " + f.entrega);
-        if (f.obs) linhas.push("*Observação:* " + f.obs);
+        linhas.push("", "*Peças:* " + reais(Sacola.total()) + " (" + Sacola.quantidade() + (Sacola.quantidade() === 1 ? " peça)" : " peças)"));
+        const f = freteEscolhido();
+        if (dados.entrega === CORREIOS) {
+          linhas.push("*Frete:* " + (f ? f.servico + (f.prazo ? " (" + f.prazo + (f.prazo === 1 ? " dia útil)" : " dias úteis)") : "") + ": " + (f.valor ? reais(f.valor) : "grátis") : "a combinar"));
+        }
+        linhas.push("*Total: " + reais(totalGeral()) + "*" + (dados.entrega === CORREIOS && !f ? " + frete" : ""), "");
+        linhas.push("*Nome:* " + dados.nome);
+        linhas.push("*Entrega:* " + dados.entrega);
+        if (dados.entrega === CORREIOS) {
+          linhas.push("*Endereço:* " + dados.rua + ", " + dados.numero + (dados.complemento ? " - " + dados.complemento : ""));
+          linhas.push("   " + dados.bairro + " - " + dados.cidade + "/" + dados.uf + " - CEP " + dados.cep);
+        } else if (dados.local) {
+          linhas.push("*Bairro/Cidade:* " + dados.local);
+        }
+        if (dados.obs) linhas.push("*Observação:* " + dados.obs);
         return linhas.join("\n");
+      }
+
+      const campo = (id, rotulo, extra = "") =>
+        '<div class="campo" id="campo-' + id + '"><label for="' + id + '">' + rotulo + '</label><input id="' + id + '" value="' + esc(dados[id] || "") + '" ' + extra + '><div class="msg-erro" id="erro-' + id + '"></div></div>';
+
+      function blocoFrete() {
+        if (frete.estado === "calculando") return '<p class="nota" style="text-align:left">Calculando o frete…</p>';
+        if (frete.estado === "erro") return '<p class="nota" style="text-align:left">' + esc(frete.msg) + '</p>';
+        if (frete.estado !== "ok") return "";
+        const opcoes = frete.opcoes.filter((o) => o.servico !== "Retirada");
+        return '<div class="campo"><label>Frete</label><div class="radios">' + opcoes.map((o) =>
+          '<label class="radio"><input type="radio" name="frete" value="' + esc(o.servico) + '"' + (o.servico === frete.escolhido ? " checked" : "") + '> ' +
+          '<span style="flex:1">' + esc(o.servico) + '<small style="color:var(--texto-suave)">' + esc([o.prazo ? o.prazo + (o.prazo === 1 ? " dia útil" : " dias úteis") : "", o.nota || ""].filter(Boolean).join(" · ")) + '</small></span><b>' + (o.valor ? reais(o.valor) : "Grátis") + '</b></label>').join("") +
+          '</div></div>';
+      }
+
+      function blocoEndereco() {
+        if (dados.entrega !== CORREIOS) return campo("local", "Bairro / cidade", 'autocomplete="address-level2"');
+        return '<div class="grade-campos">' +
+          campo("cep", "CEP *", 'inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="00000-000"') +
+          '<div id="frete">' + blocoFrete() + '</div>' +
+          campo("rua", "Rua *", 'autocomplete="address-line1"') +
+          '<div class="duas-colunas">' + campo("numero", "Número *", 'inputmode="numeric"') + campo("complemento", "Complemento") + '</div>' +
+          campo("bairro", "Bairro *") +
+          '<div class="duas-colunas">' + campo("cidade", "Cidade *", 'autocomplete="address-level2"') + campo("uf", "UF *", 'maxlength="2" autocomplete="address-level1"') + '</div>' +
+        '</div>';
+      }
+
+      function blocoResumo() {
+        const f = freteEscolhido();
+        return '<div class="resumo-linha"><span>Peças (' + Sacola.quantidade() + ')</span><span>' + reais(Sacola.total()) + '</span></div>' +
+          (dados.entrega === CORREIOS ? '<div class="resumo-linha"><span>Frete</span><span>' + (f ? (f.valor ? reais(f.valor) : "Grátis") : "—") + '</span></div>' : "") +
+          '<div class="resumo-linha resumo-total"><span>Total</span><span>' + reais(totalGeral()) + '</span></div>';
       }
 
       function render() {
@@ -56,7 +112,7 @@
         const lista = itens.map((i, n) => {
           const p = Sacola.produto(i.id);
           return '<div class="item">' +
-            '<a href="produto.html?id=' + encodeURIComponent(p.id) + '"><img src="' + esc(p.foto) + '" alt="' + esc(p.nome) + '"></a>' +
+            '<a href="produto.html?id=' + encodeURIComponent(p.id) + '"><img src="' + esc(p.foto) + '"' + (p.fotoReserva ? ' data-reserva="' + esc(p.fotoReserva) + '"' : '') + ' alt="' + esc(p.nome) + '"></a>' +
             '<div class="item-info">' +
               '<span class="item-nome">' + esc(p.nome) + '</span>' +
               '<span class="item-var">Tam. ' + esc(i.tamanho) + ' · ' + esc(i.cor) + '</span>' +
@@ -68,21 +124,19 @@
             '</div>' +
           '</div>';
         }).join("");
-        const entrega = dados.entrega || "Combinar entrega";
-        const radio = (v) => '<label class="radio"><input type="radio" name="entrega" value="' + v + '"' + (v === entrega ? " checked" : "") + '> ' + v + '</label>';
+        const radio = (v) => '<label class="radio"><input type="radio" name="entrega" value="' + v + '"' + (v === dados.entrega ? " checked" : "") + '> ' + v + '</label>';
 
         alvo.innerHTML =
           '<div class="sacola-layout">' +
             '<div><div class="itens">' + lista + '</div>' +
             '<p style="margin:14px 0 0"><a class="ver-tudo" href="catalogo.html">+ Continuar comprando</a></p></div>' +
             '<div class="resumo">' +
-              '<div class="resumo-linha"><span>Peças</span><span>' + Sacola.quantidade() + '</span></div>' +
-              '<div class="resumo-linha resumo-total"><span>Total</span><span>' + reais(Sacola.total()) + '</span></div>' +
-              '<p class="nota" style="text-align:left;margin:4px 0 0">Pagamento e entrega são combinados com a vendedora pelo WhatsApp.</p>' +
+              '<div id="resumo">' + blocoResumo() + '</div>' +
+              '<p class="nota" style="text-align:left;margin:4px 0 0">O pagamento é combinado com a vendedora pelo WhatsApp.</p>' +
               '<form class="form" id="form" novalidate>' +
-                '<div class="campo" id="campo-nome"><label for="nome">Seu nome *</label><input id="nome" autocomplete="name" value="' + esc(dados.nome || "") + '"><div class="msg-erro" id="erro-nome"></div></div>' +
-                '<div class="campo"><label for="local">Bairro / cidade</label><input id="local" autocomplete="address-level2" value="' + esc(dados.local || "") + '"></div>' +
-                '<div class="campo"><label>Como prefere receber?</label><div class="radios">' + radio("Combinar entrega") + radio("Retirar com a Tati") + radio("Pegar na feirinha / igreja") + '</div></div>' +
+                campo("nome", "Seu nome *", 'autocomplete="name"') +
+                '<div class="campo"><label>Como prefere receber?</label><div class="radios">' + ENTREGAS.map(radio).join("") + '</div></div>' +
+                '<div id="endereco">' + blocoEndereco() + '</div>' +
                 '<div class="campo"><label for="obs">Observação</label><textarea id="obs" placeholder="Ex.: prefiro pagar no Pix">' + esc(dados.obs || "") + '</textarea></div>' +
                 '<button class="botao whats largo" type="submit">' + ICONE_WHATS + ' Enviar pedido pelo WhatsApp</button>' +
                 '<p class="nota">O WhatsApp vai abrir com a mensagem pronta. É só tocar em enviar.</p>' +
@@ -90,44 +144,145 @@
               (enviado ? '<div class="enviado"><p>Conseguiu enviar o pedido?</p><div class="acoes"><button class="botao" id="limpar">Sim, esvaziar sacola</button><button class="botao secundario" id="manter">Ainda não</button></div></div>' : '') +
             '</div>' +
           '</div>';
+        if (dados.entrega === CORREIOS) verificarFrete();
+      }
+
+      const atualizarFrete = () => {
+        const el = document.getElementById("frete"); if (el) el.innerHTML = blocoFrete();
+        const r = document.getElementById("resumo"); if (r) r.innerHTML = blocoResumo();
+      };
+
+      function guardarCampos() {
+        const f = document.getElementById("form");
+        if (!f) return;
+        CAMPOS.forEach((c) => { const el = f.querySelector("#" + c); if (el) dados[c] = el.value.trim(); });
+        if (dados.uf) dados.uf = dados.uf.toUpperCase();
+        dados.entrega = (f.querySelector("input[name=entrega]:checked") || {}).value || dados.entrega;
+        const salvar = {}; ["nome", "local", "entrega", "cep", "rua", "numero", "complemento", "bairro", "cidade", "uf"].forEach((c) => (salvar[c] = dados[c]));
+        gravarJSON("tf_comprador", salvar);
+      }
+
+      async function buscarEndereco(cep) {
+        try {
+          const r = await fetch("https://viacep.com.br/ws/" + cep + "/json/");
+          const e = await r.json();
+          if (e.erro) return false;
+          const preencher = { rua: e.logradouro, bairro: e.bairro, cidade: e.localidade, uf: e.uf };
+          Object.entries(preencher).forEach(([k, v]) => {
+            const el = document.getElementById(k);
+            if (el && v && !el.value.trim()) { el.value = v; dados[k] = v; }
+          });
+          guardarCampos();
+          return true;
+        } catch { return true; } // sem internet para o ViaCEP: deixa a cliente digitar
+      }
+
+      async function calcularFrete(cep) {
+        const sig = assinatura();
+        frete = { estado: "calculando", cep, sig };
+        atualizarFrete();
+        const anterior = lerJSON("tf_frete_escolhido", null);
+        try {
+          if (!SUPA.url) throw new Error("sem banco");
+          const r = await fetch(SUPA.url + "/functions/v1/calcular-frete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: SUPA.chave },
+            body: JSON.stringify({ cep, itens: Sacola.itens().map((i) => ({ id: i.id, qtd: i.qtd })) })
+          });
+          const d = await r.json().catch(() => ({}));
+          if (frete.sig !== sig || frete.cep !== cep) return; // sacola ou CEP mudou no meio
+          if (!r.ok || !d.opcoes) throw new Error(d.erro || "erro " + r.status);
+          const correios = d.opcoes.filter((o) => o.servico !== "Retirada");
+          if (!correios.length) throw new Error("sem opções");
+          const escolhido = correios.some((o) => o.servico === anterior) ? anterior : correios[0].servico;
+          frete = { estado: "ok", cep, sig, opcoes: d.opcoes, escolhido };
+        } catch (e) {
+          if (frete.sig !== sig || frete.cep !== cep) return;
+          frete = { estado: "erro", cep, sig, msg: "Não conseguimos calcular o frete agora. Pode enviar o pedido: a Tati informa o valor pelo WhatsApp." };
+        }
+        atualizarFrete();
+      }
+
+      async function verificarFrete() {
+        const cep = soDigitos(dados.cep);
+        if (cep.length !== 8) { if (frete.estado) { frete = { estado: null }; atualizarFrete(); } return; }
+        if (frete.cep === cep && frete.sig === assinatura() && frete.estado !== "erro") { atualizarFrete(); return; }
+        const valido = await buscarEndereco(cep);
+        if (!valido) {
+          frete = { estado: "erro", cep, sig: assinatura(), msg: "CEP não encontrado. Confira os números." };
+          atualizarFrete();
+          return;
+        }
+        calcularFrete(cep);
       }
 
       alvo.addEventListener("click", (e) => {
         const b = e.target.closest("[data-acao]");
         if (b) {
           const n = Number(b.dataset.i), item = Sacola.itens()[n];
-          if (b.dataset.acao === "mais") Sacola.alterar(n, item.qtd + 1);
+          const p = Sacola.produto(item.id);
+          if (b.dataset.acao === "mais") {
+            if (TF.estoque(p, item.tamanho, item.cor) <= item.qtd) { TF.avisar("Não há mais peças dessa combinação em estoque."); return; }
+            Sacola.alterar(n, item.qtd + 1);
+          }
           if (b.dataset.acao === "menos") Sacola.alterar(n, item.qtd - 1);
           if (b.dataset.acao === "remover") Sacola.alterar(n, 0);
           guardarCampos(); render();
           return;
         }
-        if (e.target.id === "limpar") { Sacola.limpar(); enviado = false; render(); TF.avisar("Obrigada pela compra! 💕"); }
+        if (e.target.id === "limpar") { Sacola.limpar(); enviado = false; frete = { estado: null }; render(); TF.avisar("Obrigada pela compra! 💕"); }
         if (e.target.id === "manter") { enviado = false; guardarCampos(); render(); }
       });
 
-      function guardarCampos() {
-        const f = document.getElementById("form");
-        if (!f) return;
-        dados.nome = f.querySelector("#nome").value.trim();
-        dados.local = f.querySelector("#local").value.trim();
-        dados.obs = f.querySelector("#obs").value.trim();
-        dados.entrega = (f.querySelector("input[name=entrega]:checked") || {}).value;
-        gravarJSON("tf_comprador", { nome: dados.nome, local: dados.local, entrega: dados.entrega });
+      alvo.addEventListener("change", (e) => {
+        if (e.target.name === "entrega") {
+          guardarCampos();
+          document.getElementById("endereco").innerHTML = blocoEndereco();
+          document.getElementById("resumo").innerHTML = blocoResumo();
+          if (dados.entrega === CORREIOS) verificarFrete();
+        }
+        if (e.target.name === "frete") {
+          frete.escolhido = e.target.value;
+          gravarJSON("tf_frete_escolhido", frete.escolhido);
+          document.getElementById("resumo").innerHTML = blocoResumo();
+        }
+      });
+
+      alvo.addEventListener("input", (e) => {
+        if (e.target.id !== "cep") return;
+        const d = soDigitos(e.target.value).slice(0, 8);
+        e.target.value = d.length > 5 ? d.slice(0, 5) + "-" + d.slice(5) : d;
+        dados.cep = e.target.value;
+        document.getElementById("campo-cep").classList.remove("erro");
+        document.getElementById("erro-cep").textContent = "";
+        if (d.length === 8) { guardarCampos(); verificarFrete(); }
+      });
+
+      function erro(id, msg) {
+        document.getElementById("campo-" + id).classList.add("erro");
+        document.getElementById("erro-" + id).textContent = msg;
+        return id;
       }
 
       alvo.addEventListener("submit", (e) => {
         e.preventDefault();
         guardarCampos();
-        if (!dados.nome) {
-          document.getElementById("campo-nome").classList.add("erro");
-          document.getElementById("erro-nome").textContent = "Informe seu nome para a vendedora saber quem é.";
-          document.getElementById("nome").focus();
-          return;
+        alvo.querySelectorAll(".campo.erro").forEach((c) => c.classList.remove("erro"));
+        alvo.querySelectorAll(".msg-erro").forEach((c) => (c.textContent = ""));
+        const faltando = [];
+        if (!dados.nome) faltando.push(erro("nome", "Informe seu nome para a vendedora saber quem é."));
+        if (dados.entrega === CORREIOS) {
+          if (soDigitos(dados.cep).length !== 8) faltando.push(erro("cep", "Informe o CEP com 8 números."));
+          if (!dados.rua) faltando.push(erro("rua", "Informe a rua."));
+          if (!dados.numero) faltando.push(erro("numero", "Informe o número (ou S/N)."));
+          if (!dados.bairro) faltando.push(erro("bairro", "Informe o bairro."));
+          if (!dados.cidade) faltando.push(erro("cidade", "Informe a cidade."));
+          if (!/^[A-Z]{2}$/.test(dados.uf || "")) faltando.push(erro("uf", "UF com 2 letras."));
+          if (!faltando.length && frete.estado === "calculando") { TF.avisar("Aguarde o cálculo do frete."); return; }
         }
+        if (faltando.length) { document.getElementById(faltando[0]).focus(); return; }
         if (!LOJA.whatsapp) { TF.avisar("Número de WhatsApp da loja não configurado."); return; }
-        const texto = montarMensagem(dados);
-        const url = "https://wa.me/" + LOJA.whatsapp + "?text=" + encodeURIComponent(texto);
+        const url = "https://wa.me/" + LOJA.whatsapp + "?text=" + encodeURIComponent(montarMensagem());
         window.open(url, "_blank") || (location.href = url);
         enviado = true; render();
       });

@@ -36,6 +36,27 @@ O desenho completo (tabelas, diagrama, regras de acesso e consultas) está no do
    update config_loja set cep_origem = '00000-000';  -- coloque o CEP de onde os pacotes saem
    ```
 
+## Fase 3: frete (Melhor Envio)
+
+1. Crie a conta de teste em **https://sandbox.melhorenvio.com.br** e gere um token
+   (veja `Passo-a-passo-contas.md`, parte 3). Copie o token.
+2. No Supabase, abra **Edge Functions** > **Secrets** e adicione:
+   - `ME_TOKEN` = o token do Melhor Envio
+   - `ME_AMBIENTE` = `sandbox` (só troque para `producao` na fase 6)
+3. Abra **Edge Functions** > **Deploy a new function** > **Via Editor**.
+   - Nome da função: `calcular-frete` (exatamente assim)
+   - Apague o código de exemplo e cole todo o conteúdo de `supabase/functions/calcular-frete/index.ts`
+   - Clique em **Deploy function**
+4. Na função criada, abra **Details** (ou **Settings**) e **desligue** a opção **Verify JWT** (ou "Enforce JWT
+   verification"). Salve. Sem isso o site recebe erro 401, porque ele usa a Publishable key.
+5. Confira se o CEP de origem já está gravado (item 8 da fase 1).
+6. Teste: abra `sacola.html` com uma peça na sacola, escolha "Receber pelos Correios" e digite um CEP.
+   Devem aparecer PAC e SEDEX com preço e prazo.
+
+Peso e medidas: cada peça começa com 300 g e caixa de 30 x 20 x 5 cm. Para mudar uma peça, edite as colunas
+`peso_g`, `altura_cm`, `largura_cm` e `comprimento_cm` em **Table Editor** > **produtos**.
+Frete grátis a partir de um valor: `update config_loja set frete_gratis_acima = 199.90;`
+
 ## Quando mudar os produtos em `data/produtos.js`
 
 Rode `node scripts/gerar-seed.js` para gerar de novo `seed.sql` e `instalar-tudo.sql`.
