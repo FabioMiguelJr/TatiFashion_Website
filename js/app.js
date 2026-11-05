@@ -7,6 +7,43 @@
   const reais = (v) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const categorias = () => [...new Set(PRODUTOS.map((p) => p.categoria))];
 
+  /* ---------- Sacola (fica salva no navegador do cliente) ---------- */
+  const CHAVE = "tf_sacola";
+  const lerJSON = (k, padrao) => { try { return JSON.parse(localStorage.getItem(k)) ?? padrao; } catch { return padrao; } };
+  const gravarJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  const Sacola = {
+    itens() {
+      // descarta itens de produtos que saíram do catálogo
+      return lerJSON(CHAVE, []).filter((i) => PRODUTOS.some((p) => p.id === i.id));
+    },
+    salvar(itens) { gravarJSON(CHAVE, itens); atualizarContador(); },
+    adicionar(id, tamanho, cor, qtd = 1) {
+      const itens = Sacola.itens();
+      const existente = itens.find((i) => i.id === id && i.tamanho === tamanho && i.cor === cor);
+      if (existente) existente.qtd = Math.min(existente.qtd + qtd, 20);
+      else itens.push({ id, tamanho, cor, qtd });
+      Sacola.salvar(itens);
+    },
+    alterar(indice, qtd) {
+      const itens = Sacola.itens();
+      if (!itens[indice]) return;
+      if (qtd <= 0) itens.splice(indice, 1); else itens[indice].qtd = Math.min(qtd, 20);
+      Sacola.salvar(itens);
+    },
+    limpar() { Sacola.salvar([]); },
+    produto: (id) => PRODUTOS.find((p) => p.id === id),
+    quantidade() { return Sacola.itens().reduce((s, i) => s + i.qtd, 0); },
+    total() { return Sacola.itens().reduce((s, i) => s + i.qtd * Sacola.produto(i.id).preco, 0); }
+  };
+  function atualizarContador() {
+    const el = document.getElementById("contador-sacola");
+    if (!el) return;
+    const n = Sacola.quantidade();
+    el.textContent = n > 9 ? "9+" : String(n);
+    el.hidden = n === 0;
+  }
+  window.addEventListener("storage", (e) => { if (e.key === CHAVE) atualizarContador(); });
+
   const ICONES = {
     menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
     sacola: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
@@ -24,7 +61,7 @@
           <a href="index.html" class="logo">TatiFashion<span>Modas</span></a>
           <div class="topo-acoes">
             <a class="icone-btn" href="catalogo.html#busca" aria-label="Buscar">${ICONES.busca}</a>
-            <button class="icone-btn" id="btn-sacola" aria-label="Sacola">${ICONES.sacola}</button>
+            <a class="icone-btn" href="sacola.html" aria-label="Sacola">${ICONES.sacola}<span class="contador" id="contador-sacola" hidden>0</span></a>
           </div>
         </div>
       </header>
@@ -34,6 +71,7 @@
           <span class="logo">TatiFashion</span>
           <a href="index.html">Início</a>
           <a href="catalogo.html">Todos os produtos</a>
+          <a href="sacola.html">Minha sacola</a>
           ${links}
           ${LOJA.instagram ? `<a href="${esc(LOJA.instagram)}" target="_blank" rel="noopener">Instagram</a>` : ""}
         </div>
@@ -42,7 +80,7 @@
     const abrir = (v) => { menu.classList.toggle("aberto", v); menu.setAttribute("aria-hidden", String(!v)); };
     document.getElementById("abrir-menu").addEventListener("click", () => abrir(true));
     menu.querySelector("[data-fechar]").addEventListener("click", () => abrir(false));
-    document.getElementById("btn-sacola").addEventListener("click", () => avisar("A sacola de compras chega na próxima etapa 🛍️"));
+    atualizarContador();
   }
 
   function montarRodape() {
@@ -76,15 +114,15 @@
   }
 
   let toastTimer;
-  function avisar(msg) {
+  function avisar(msg, link) {
     let t = document.querySelector(".toast");
     if (!t) { t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
-    t.textContent = msg;
+    t.innerHTML = esc(msg) + (link ? ` <a href="${esc(link.href)}">${esc(link.texto)}</a>` : "");
     t.classList.add("visivel");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove("visivel"), 2600);
+    toastTimer = setTimeout(() => t.classList.remove("visivel"), link ? 4000 : 2600);
   }
 
-  window.TF = { PRODUTOS, LOJA, esc, reais, categorias, cardProduto, avisar };
+  window.TF = { PRODUTOS, LOJA, esc, reais, categorias, cardProduto, avisar, Sacola, lerJSON, gravarJSON };
   document.addEventListener("DOMContentLoaded", () => { montarTopo(); montarRodape(); });
 })();

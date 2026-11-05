@@ -18,7 +18,7 @@
   <div id="rodape"></div>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      const { PRODUTOS, esc, reais, cardProduto, avisar } = TF;
+      const { PRODUTOS, esc, reais, cardProduto, avisar, Sacola } = TF;
       const id = new URLSearchParams(location.search).get("id");
       const p = PRODUTOS.find((x) => x.id === id);
       const alvo = document.getElementById("produto");
@@ -59,7 +59,8 @@
           document.getElementById("aviso").textContent = "Escolha " + (!escolha.tamanho ? "o tamanho" : "a cor") + " antes de continuar.";
           return;
         }
-        avisar("A sacola de compras chega na próxima etapa 🛍️");
+        Sacola.adicionar(p.id, escolha.tamanho, escolha.cor);
+        avisar("Adicionado à sacola!", { href: "sacola.html", texto: "Ver sacola" });
       });
     });
   </script>

@@ -173,3 +173,60 @@ button { font: inherit; cursor: pointer; }
   .produto-detalhes { padding-bottom: 40px; }
   .barra-compra { position: static; border: 0; padding: 0; background: transparent; }
 }
+
+/* ---------- Passo 2: sacola ---------- */
+.contador {
+  position: absolute; top: 4px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 999px; background: var(--vinho); color: #fff; font-size: .68rem; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center; line-height: 1;
+}
+.contador[hidden] { display: none; }
+.toast { pointer-events: auto; }
+.toast a { color: #ffd6e4; font-weight: 700; text-decoration: underline; margin-left: 6px; }
+.pagina-titulo { font-family: var(--fonte-titulo); font-size: 1.6rem; margin: 20px 0 14px; }
+.itens { display: flex; flex-direction: column; gap: 12px; }
+.item {
+  display: grid; grid-template-columns: 84px 1fr; gap: 12px; background: var(--branco);
+  border-radius: var(--raio); box-shadow: var(--sombra); padding: 10px;
+}
+.item img { width: 84px; height: 112px; object-fit: cover; border-radius: 10px; background: var(--rosa); }
+.item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.item-nome { font-weight: 600; font-size: .95rem; line-height: 1.3; }
+.item-var { color: var(--texto-suave); font-size: .82rem; }
+.item-rodape { display: flex; align-items: center; justify-content: space-between; margin-top: auto; gap: 8px; }
+.qtd { display: inline-flex; align-items: center; border: 1px solid var(--borda); border-radius: 999px; }
+.qtd button { width: 38px; height: 38px; border: 0; background: transparent; font-size: 1.15rem; color: var(--vinho); }
+.qtd span { min-width: 22px; text-align: center; font-weight: 600; }
+.remover { border: 0; background: transparent; color: var(--texto-suave); font-size: .8rem; text-decoration: underline; padding: 8px 0; }
+.resumo { background: var(--branco); border-radius: var(--raio); box-shadow: var(--sombra); padding: 16px; margin-top: 18px; }
+.resumo-linha { display: flex; justify-content: space-between; margin-bottom: 6px; }
+.resumo-total { font-size: 1.15rem; font-weight: 700; color: var(--vinho); border-top: 1px solid var(--borda); padding-top: 10px; margin-top: 6px; }
+.form { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; }
+.campo label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 6px; }
+.campo input, .campo textarea {
+  width: 100%; min-height: 48px; border: 1px solid var(--borda); border-radius: 10px; padding: 12px;
+  font: inherit; font-size: 16px; background: var(--branco); color: var(--texto);
+}
+.campo textarea { min-height: 80px; resize: vertical; }
+.campo input:focus, .campo textarea:focus { outline: 2px solid var(--vinho); outline-offset: 1px; border-color: transparent; }
+.campo.erro input { border-color: #c2410c; }
+.campo .msg-erro { color: #c2410c; font-size: .8rem; margin-top: 4px; }
+.radios { display: flex; flex-direction: column; gap: 8px; }
+.radio {
+  display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px;
+  border: 1.5px solid var(--borda); border-radius: 10px; background: var(--branco);
+}
+.radio:has(input:checked) { border-color: var(--vinho); background: var(--rosa); }
+.radio input { accent-color: var(--vinho); width: 18px; height: 18px; }
+.botao.whats { background: #1f9d55; }
+.botao.whats:active { background: #17803f; }
+.botao svg { width: 22px; height: 22px; }
+.nota { font-size: .8rem; color: var(--texto-suave); text-align: center; margin: 8px 0 0; }
+.enviado { background: var(--rosa); border-radius: var(--raio); padding: 16px; margin-top: 16px; text-align: center; }
+.enviado p { margin: 0 0 12px; }
+.enviado .acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+@media (min-width: 960px) {
+  .sacola-layout { display: grid; grid-template-columns: 1.3fr 1fr; gap: 32px; align-items: start; }
+  .sacola-layout .resumo { margin-top: 0; }
+}
+.campo .radio { display: flex; margin: 0; font-weight: 500; }

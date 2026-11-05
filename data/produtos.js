@@ -50,5 +50,5 @@ window.PRODUTOS = [
 window.LOJA = {
   nome: "TatiFashion Modas",
   instagram: "https://www.instagram.com/",   // troque pelo link do Instagram da loja
-  whatsapp: ""                                 // número com DDI e DDD, só dígitos (ex.: "5511999999999") — usado no passo 2
+  whatsapp: "5521996095743"                    // número que recebe os pedidos: DDI + DDD + número, só dígitos
 };
