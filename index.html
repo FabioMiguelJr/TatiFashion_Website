@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script src="data/produtos.js"></script>
+  <script src="js/config.js"></script>
   <script src="js/app.js"></script>
   <title>TatiFashion Modas</title>
   <meta name="description" content="Moda feminina TatiFashion Modas: blusas, vestidos, saias e casacos.">
@@ -39,7 +40,7 @@
   </main>
   <div id="rodape"></div>
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
+    TF.pronto(() => {
       const { PRODUTOS, categorias, cardProduto, esc } = TF;
       document.getElementById("categorias").innerHTML = categorias().map((c) => {
         const p = PRODUTOS.find((x) => x.categoria === c && x.destaque) || PRODUTOS.find((x) => x.categoria === c);

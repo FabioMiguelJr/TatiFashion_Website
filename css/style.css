@@ -75,6 +75,7 @@ button { font: inherit; cursor: pointer; }
   background: var(--vinho); color: var(--branco); font-weight: 600;
 }
 .botao:active { background: var(--vinho-escuro); }
+.botao:disabled { background: #b9b9b9; border-color: #b9b9b9; cursor: not-allowed; }
 .botao.secundario { background: transparent; color: var(--vinho); border: 1.5px solid var(--vinho); }
 .botao.largo { width: 100%; }
 
@@ -120,6 +121,7 @@ button { font: inherit; cursor: pointer; }
   font-size: .7rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .5px;
 }
 .selo.promo { background: #e0457b; }
+.selo.esgotado { background: #6b6b6b; }
 .card-info { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .card-nome { font-size: .9rem; font-weight: 500; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .preco { font-weight: 700; color: var(--vinho); font-size: 1.05rem; margin-top: auto; padding-top: 4px; }
@@ -143,6 +145,7 @@ button { font: inherit; cursor: pointer; }
   border: 1.5px solid var(--borda); background: var(--branco); color: var(--texto); font-weight: 500;
 }
 .opcao-btn.ativo { border-color: var(--vinho); background: var(--rosa); color: var(--vinho-escuro); }
+.opcao-btn.esgotado { color: var(--texto-suave); text-decoration: line-through; border-style: dashed; }
 .descricao { color: var(--texto-suave); }
 .barra-compra {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; background: var(--branco);

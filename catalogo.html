@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script src="data/produtos.js"></script>
+  <script src="js/config.js"></script>
   <script src="js/app.js"></script>
   <title>Catálogo · TatiFashion Modas</title>
 </head>
@@ -35,7 +36,7 @@
   </main>
   <div id="rodape"></div>
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
+    TF.pronto(() => {
       const { PRODUTOS, categorias, cardProduto, esc } = TF;
       const url = new URLSearchParams(location.search);
       let cat = url.get("categoria") || "";

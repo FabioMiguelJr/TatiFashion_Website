@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script src="data/produtos.js"></script>
+  <script src="js/config.js"></script>
   <script src="js/app.js"></script>
   <title>Produto · TatiFashion Modas</title>
 </head>
@@ -18,8 +19,8 @@
   <main class="container" id="produto"></main>
   <div id="rodape"></div>
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const { PRODUTOS, esc, reais, cardProduto, avisar, Sacola } = TF;
+    TF.pronto(() => {
+      const { PRODUTOS, esc, reais, cardProduto, avisar, Sacola, estoque } = TF;
       const id = new URLSearchParams(location.search).get("id");
       const p = PRODUTOS.find((x) => x.id === id);
       const alvo = document.getElementById("produto");
@@ -29,13 +30,15 @@
       }
       document.title = p.nome + " · TatiFashion Modas";
       const escolha = { tamanho: p.tamanhos.length === 1 ? p.tamanhos[0] : null, cor: p.cores.length === 1 ? p.cores[0] : null };
-      const botoes = (lista, tipo) => lista.map((v) => '<button class="opcao-btn' + (escolha[tipo] === v ? " ativo" : "") + '" data-tipo="' + tipo + '" data-valor="' + esc(v) + '">' + esc(v) + '</button>').join("");
+      // tamanho (ou cor) sem nenhuma peça em estoque aparece riscado
+      const semEstoque = (tipo, v) => tipo === "tamanho" ? p.cores.every((c) => estoque(p, v, c) <= 0) : p.tamanhos.every((t) => estoque(p, t, v) <= 0);
+      const botoes = (lista, tipo) => lista.map((v) => '<button class="opcao-btn' + (escolha[tipo] === v ? " ativo" : "") + (semEstoque(tipo, v) ? " esgotado" : "") + '" data-tipo="' + tipo + '" data-valor="' + esc(v) + '">' + esc(v) + '</button>').join("");
       const parcela = p.preco >= 60 ? '<p class="parcelas">ou 2x de ' + reais(p.preco / 2) + ' (combinado no WhatsApp)</p>' : '<p class="parcelas">Pagamento combinado pelo WhatsApp</p>';
       const relacionados = PRODUTOS.filter((x) => x.categoria === p.categoria && x.id !== p.id).slice(0, 4);
 
       alvo.innerHTML =
         '<div class="produto-layout">' +
-          '<div class="produto-foto"><img src="' + esc(p.foto) + '" alt="' + esc(p.nome) + '"></div>' +
+          '<div class="produto-foto"><img src="' + esc(p.foto) + '"' + (p.fotoReserva ? ' data-reserva="' + esc(p.fotoReserva) + '"' : '') + ' alt="' + esc(p.nome) + '"></div>' +
           '<div class="produto-detalhes">' +
             '<div class="migalha"><a href="catalogo.html">Catálogo</a> / <a href="catalogo.html?categoria=' + encodeURIComponent(p.categoria) + '">' + esc(p.categoria) + '</a></div>' +
             '<h1>' + esc(p.nome) + '</h1>' +
@@ -43,7 +46,7 @@
             '<div class="opcao"><div class="opcao-titulo">Tamanho</div><div class="opcoes" id="op-tamanho">' + botoes(p.tamanhos, "tamanho") + '</div></div>' +
             '<div class="opcao"><div class="opcao-titulo">Cor</div><div class="opcoes" id="op-cor">' + botoes(p.cores, "cor") + '</div></div>' +
             '<p class="descricao">' + esc(p.descricao) + '</p>' +
-            '<div class="barra-compra"><div class="container"><button class="botao largo" id="comprar">Adicionar à sacola</button></div></div>' +
+            '<div class="barra-compra"><div class="container"><button class="botao largo" id="comprar"' + (p.esgotado ? ' disabled' : '') + '>' + (p.esgotado ? 'Esgotado' : 'Adicionar à sacola') + '</button></div></div>' +
             '<div class="aviso" id="aviso"></div>' +
           '</div>' +
         '</div>' +
@@ -53,11 +56,18 @@
         const b = e.target.closest(".opcao-btn"); if (!b) return;
         escolha[b.dataset.tipo] = b.dataset.valor;
         b.parentElement.querySelectorAll(".opcao-btn").forEach((x) => x.classList.toggle("ativo", x === b));
-        document.getElementById("aviso").textContent = "";
+        const qtd = escolha.tamanho && escolha.cor ? estoque(p, escolha.tamanho, escolha.cor) : Infinity;
+        document.getElementById("aviso").textContent = qtd <= 0 ? "Essa combinação de tamanho e cor está esgotada." : qtd <= 2 ? "Últimas peças!" : "";
       });
       document.getElementById("comprar").addEventListener("click", () => {
         if (!escolha.tamanho || !escolha.cor) {
           document.getElementById("aviso").textContent = "Escolha " + (!escolha.tamanho ? "o tamanho" : "a cor") + " antes de continuar.";
+          return;
+        }
+        const qtd = estoque(p, escolha.tamanho, escolha.cor);
+        const naSacola = Sacola.itens().filter((i) => i.id === p.id && i.tamanho === escolha.tamanho && i.cor === escolha.cor).reduce((s, i) => s + i.qtd, 0);
+        if (qtd <= naSacola) {
+          document.getElementById("aviso").textContent = qtd <= 0 ? "Essa combinação de tamanho e cor está esgotada." : "Você já tem todas as peças disponíveis dessa combinação na sacola.";
           return;
         }
         Sacola.adicionar(p.id, escolha.tamanho, escolha.cor);

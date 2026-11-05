@@ -1,11 +1,98 @@
 /* TatiFashion — código compartilhado por todas as páginas */
 (function () {
-  const PRODUTOS = window.PRODUTOS || [];
+  const PRODUTOS = (window.PRODUTOS || []).slice();
   const LOJA = window.LOJA || { nome: "TatiFashion Modas" };
+  const SUPA = window.SUPABASE || {};
+  const ORDEM_CAT = {};
 
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const reais = (v) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const categorias = () => [...new Set(PRODUTOS.map((p) => p.categoria))];
+  const categorias = () => [...new Set(PRODUTOS.map((p) => p.categoria))]
+    .sort((a, b) => (ORDEM_CAT[a] ?? 99) - (ORDEM_CAT[b] ?? 99));
+
+  /* ---------- Catálogo: lê do banco (Supabase) e, se falhar, usa o data/produtos.js ---------- */
+  const CACHE = "tf_catalogo_v1", CACHE_MIN = 5;
+  const fotoBanco = (caminho) => SUPA.url + "/storage/v1/object/public/produtos/" + encodeURIComponent(caminho);
+  function converter(r) {
+    const fotos = (r.produto_fotos || []).slice().sort((a, b) => a.ordem - b.ordem);
+    const variantes = (r.variantes || []).slice().sort((a, b) => a.id - b.id);
+    ORDEM_CAT[r.categorias.nome] = r.categorias.ordem;
+    return {
+      id: r.slug,
+      nome: r.nome,
+      categoria: r.categorias.nome,
+      preco: Number(r.preco),
+      precoAntigo: r.preco_antigo ? Number(r.preco_antigo) : undefined,
+      descricao: r.descricao || "",
+      destaque: r.destaque,
+      novo: r.novo,
+      foto: fotos.length ? fotoBanco(fotos[0].caminho) : "img/flor.svg",
+      fotoReserva: fotos.length ? "img/produtos/" + fotos[0].caminho : "",
+      fotos: fotos.map((f) => fotoBanco(f.caminho)),
+      variantes,
+      tamanhos: [...new Set(variantes.map((v) => v.tamanho))],
+      cores: [...new Set(variantes.map((v) => v.cor))],
+      esgotado: variantes.length > 0 && variantes.every((v) => v.estoque <= 0)
+    };
+  }
+  async function buscar(caminho) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 6000);
+    try {
+      const r = await fetch(SUPA.url + "/rest/v1/" + caminho, { headers: { apikey: SUPA.chave }, signal: ctrl.signal });
+      if (!r.ok) throw new Error("Banco respondeu " + r.status);
+      return await r.json();
+    } finally { clearTimeout(t); }
+  }
+  async function carregarCatalogo() {
+    if (!SUPA.url || !SUPA.chave) return "arquivo";
+    let dados = null;
+    try {
+      const c = JSON.parse(sessionStorage.getItem(CACHE));
+      if (c && Date.now() - c.em < CACHE_MIN * 60000) dados = c.dados;
+    } catch {}
+    try {
+      if (!dados) {
+        const [produtos, config] = await Promise.all([
+          buscar("produtos?select=slug,nome,descricao,preco,preco_antigo,destaque,novo," +
+                 "categorias(nome,ordem),produto_fotos(caminho,ordem),variantes(id,tamanho,cor,estoque)" +
+                 "&ativo=eq.true&order=nome.asc"),
+          buscar("config_loja?select=whatsapp,instagram,frete_gratis_acima,retirada_ativa,retirada_texto")
+        ]);
+        dados = { produtos, config: config[0] || null };
+        try { sessionStorage.setItem(CACHE, JSON.stringify({ em: Date.now(), dados })); } catch {}
+      }
+      if (!dados.produtos.length) throw new Error("Banco sem produtos");
+      PRODUTOS.splice(0, PRODUTOS.length, ...dados.produtos.map(converter));
+      if (dados.config) {
+        if (dados.config.whatsapp) LOJA.whatsapp = dados.config.whatsapp;
+        if (dados.config.instagram) LOJA.instagram = dados.config.instagram;
+        LOJA.config = dados.config;
+      }
+      return "banco";
+    } catch (e) {
+      console.warn("TatiFashion: usando data/produtos.js porque o banco não respondeu.", e);
+      return "arquivo";
+    }
+  }
+  const carregando = carregarCatalogo().then((f) => { TF.fonte = f; document.documentElement.dataset.fonte = f; });
+  const domPronto = new Promise((ok) => document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", ok) : ok());
+  const fila = [];
+  let liberado = false;
+  Promise.all([carregando, domPronto]).then(() => { liberado = true; fila.splice(0).forEach((fn) => fn()); });
+  /* Use TF.pronto(() => { ... }) nas páginas: roda quando a página e o catálogo estiverem prontos. */
+  const pronto = (fn) => (liberado ? fn() : fila.push(fn));
+  /* Estoque de uma combinação (Infinity quando o catálogo veio do arquivo e não tem estoque). */
+  const estoque = (p, tamanho, cor) => {
+    if (!p.variantes) return Infinity;
+    const v = p.variantes.find((x) => x.tamanho === tamanho && x.cor === cor);
+    return v ? v.estoque : 0;
+  };
+  /* Foto do banco que não carregou: troca pela cópia em img/produtos */
+  document.addEventListener("error", (e) => {
+    const img = e.target;
+    if (img.tagName === "IMG" && img.dataset.reserva && img.getAttribute("src") !== img.dataset.reserva) img.src = img.dataset.reserva;
+  }, true);
 
   /* ---------- Sacola (fica salva no navegador do cliente) ---------- */
   const CHAVE = "tf_sacola";
@@ -100,11 +187,11 @@
   }
 
   function cardProduto(p) {
-    const selo = p.precoAntigo ? '<span class="selo promo">Promo</span>' : p.novo ? '<span class="selo">Novo</span>' : "";
+    const selo = p.esgotado ? '<span class="selo esgotado">Esgotado</span>' : p.precoAntigo ? '<span class="selo promo">Promo</span>' : p.novo ? '<span class="selo">Novo</span>' : "";
     return `
       <a class="card" href="produto.html?id=${encodeURIComponent(p.id)}">
         <div class="card-foto">
-          <img src="${esc(p.foto)}" alt="${esc(p.nome)}" loading="lazy" decoding="async">
+          <img src="${esc(p.foto)}"${p.fotoReserva ? ` data-reserva="${esc(p.fotoReserva)}"` : ""} alt="${esc(p.nome)}" loading="lazy" decoding="async">
           ${selo}
         </div>
         <div class="card-info">
@@ -124,6 +211,6 @@
     toastTimer = setTimeout(() => t.classList.remove("visivel"), link ? 4000 : 2600);
   }
 
-  window.TF = { PRODUTOS, LOJA, esc, reais, categorias, cardProduto, avisar, Sacola, lerJSON, gravarJSON };
-  document.addEventListener("DOMContentLoaded", () => { montarTopo(); montarRodape(); });
+  const TF = window.TF = { PRODUTOS, LOJA, esc, reais, categorias, cardProduto, avisar, Sacola, lerJSON, gravarJSON, pronto, estoque, fonte: null };
+  pronto(() => { montarTopo(); montarRodape(); });
 })();
