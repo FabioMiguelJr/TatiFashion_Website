@@ -89,10 +89,15 @@ ou boleto). Quando o pagamento é aprovado, o Mercado Pago avisa a função `web
    uma conta **Vendedor** e uma **Comprador**, as duas do Brasil. Anote o usuário e a senha de cada uma.
 3. **Access Token de teste:** a API de Orders não aceita as "credenciais de teste". O jeito certo de testar é
    usar as **credenciais de produção da conta Vendedor de teste**:
-   1. Abra uma janela anônima (Ctrl+Shift+N) e entre em **https://www.mercadopago.com.br/developers** com o
-      usuário e a senha da conta **Vendedor** de teste.
-   2. Crie uma aplicação nela (Checkout Pro, API de Orders), do mesmo jeito que você fez na sua conta.
-   3. Abra **Credenciais de produção** e copie o **Access Token** (começa com `APP_USR-`). Não mande no chat.
+   1. Abra uma janela anônima (Ctrl+Shift+N), entre em **https://www.mercadopago.com.br** com o usuário e a
+      senha da conta **Vendedor** de teste. Aparece a tela inicial da conta "Test", com saldo de R$ 1.000.
+   2. Nessa mesma janela, digite na barra de endereço **https://www.mercadopago.com.br/developers/panel/app**
+      e aperte Enter. Abre o painel **Suas integrações** da conta de teste.
+   3. Clique em **Criar aplicação**: solução **Checkout Pro**, tipo de API **API de Orders**,
+      nome `TatiFashion Teste`, marque a autorização e clique em **Criar aplicação**.
+   4. Dentro da aplicação, no menu da esquerda, clique em **Credenciais de produção**. Se pedir para ativar,
+      preencha o ramo (**Vestuário** ou parecido) e o site `https://fabiomigueljr.github.io/TatiFashion_Website/`.
+   5. Copie o **Access Token** (começa com `APP_USR-`). Não mande no chat.
 4. **Segredos no Supabase** (Edge Functions > Secrets):
    - `TF_SECRET_KEY` = a **Secret key** do Supabase (`sb_secret_...`, em Project Settings > API Keys)
    - `MP_ACCESS_TOKEN` = o Access Token do passo 3
