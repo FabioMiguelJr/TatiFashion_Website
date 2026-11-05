@@ -1,14 +1,16 @@
 /* TatiFashion — estilos (mobile-first: o padrão é o celular; telas maiores ganham ajustes no fim) */
 :root {
-  --vinho: #8c2a4f;
-  --vinho-escuro: #6b1f3c;
-  --rosa: #f6e3ea;
-  --creme: #fbf7f4;
-  --texto: #2b2226;
-  --texto-suave: #6f6268;
-  --borda: #eadfe3;
+  /* Paleta rosa da TatiFashion */
+  --vinho: #b0386a;        /* rosa forte: botões, preços, destaques */
+  --vinho-escuro: #8a2752; /* rosa escuro: títulos e rodapé */
+  --rosa: #fde8ef;         /* rosa claro: fundos de seleção */
+  --rosa-medio: #f29bb8;
+  --creme: #fff6f9;        /* fundo geral */
+  --texto: #3a2430;
+  --texto-suave: #7a5f6b;
+  --borda: #f3d5e0;
   --branco: #ffffff;
-  --sombra: 0 2px 10px rgba(60, 20, 35, .08);
+  --sombra: 0 2px 12px rgba(176, 56, 106, .10);
   --raio: 14px;
   --fonte-titulo: "Playfair Display", Georgia, serif;
   --fonte: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -17,7 +19,8 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; font-family: var(--fonte); color: var(--texto);
-  background: var(--creme); line-height: 1.5; font-size: 16px;
+  background: var(--creme) url("../img/fundo-floral.svg") repeat; background-size: 240px;
+  line-height: 1.5; font-size: 16px;
 }
 img { max-width: 100%; display: block; }
 a { color: inherit; text-decoration: none; }
@@ -26,12 +29,15 @@ button { font: inherit; cursor: pointer; }
 
 /* Cabeçalho */
 .topo {
-  position: sticky; top: 0; z-index: 20; background: var(--branco);
+  position: sticky; top: 0; z-index: 20; background: rgba(255, 255, 255, .94);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
   border-bottom: 1px solid var(--borda);
 }
 .topo .container { display: flex; align-items: center; justify-content: space-between; height: 60px; }
-.logo { font-family: var(--fonte-titulo); font-size: 1.45rem; font-weight: 700; color: var(--vinho); letter-spacing: .3px; }
-.logo span { font-family: var(--fonte); font-size: .7rem; font-weight: 500; color: var(--texto-suave); letter-spacing: 2px; text-transform: uppercase; margin-left: 4px; }
+.logo { display: inline-flex; align-items: center; gap: 6px; font-family: var(--fonte-titulo); font-size: 1.35rem; font-weight: 700; color: var(--vinho); letter-spacing: .2px; line-height: 1; }
+.logo img { width: 30px; height: 30px; flex: 0 0 auto; }
+.logo .logo-texto { display: flex; flex-direction: column; }
+.logo small { font-family: var(--fonte); font-size: .58rem; font-weight: 600; color: var(--texto-suave); letter-spacing: 4px; text-transform: uppercase; margin-top: 3px; }
 .topo-acoes { display: flex; gap: 4px; }
 .icone-btn {
   width: 44px; height: 44px; border: 0; background: transparent; border-radius: 50%;
@@ -52,13 +58,13 @@ button { font: inherit; cursor: pointer; }
 .menu.aberto { pointer-events: auto; }
 .menu.aberto .menu-fundo { opacity: 1; }
 .menu.aberto .menu-painel { transform: none; }
-.menu-painel .logo { padding: 0 20px 16px; border-bottom: 1px solid var(--borda); }
+
 .menu-painel a { padding: 14px 20px; font-weight: 500; border-bottom: 1px solid var(--borda); }
 .menu-painel a:active { background: var(--rosa); }
 
 /* Banner */
 .hero {
-  background: linear-gradient(135deg, var(--rosa), #fff 70%);
+  background: linear-gradient(180deg, rgba(253, 232, 239, .92), rgba(255, 246, 249, .75));
   padding: 36px 0 32px; text-align: center;
 }
 .hero h1 { font-family: var(--fonte-titulo); font-size: 2rem; line-height: 1.15; margin: 0 0 10px; color: var(--vinho-escuro); }
@@ -88,7 +94,7 @@ button { font: inherit; cursor: pointer; }
 }
 
 /* Filtros (chips roláveis no celular) */
-.filtros { position: sticky; top: 60px; z-index: 10; background: var(--creme); padding: 12px 0 8px; }
+.filtros { position: sticky; top: 60px; z-index: 10; background: rgba(255, 246, 249, .96); padding: 12px 0 8px; }
 .chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
 .chips::-webkit-scrollbar { display: none; }
 .chip {
@@ -113,7 +119,7 @@ button { font: inherit; cursor: pointer; }
   position: absolute; top: 8px; left: 8px; background: var(--vinho); color: #fff;
   font-size: .7rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .5px;
 }
-.selo.promo { background: #c2410c; }
+.selo.promo { background: #e0457b; }
 .card-info { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .card-nome { font-size: .9rem; font-weight: 500; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .preco { font-weight: 700; color: var(--vinho); font-size: 1.05rem; margin-top: auto; padding-top: 4px; }
@@ -146,8 +152,9 @@ button { font: inherit; cursor: pointer; }
 .aviso { font-size: .8rem; color: #b45309; margin-top: 6px; min-height: 1.2em; }
 
 /* Rodapé */
-.rodape { background: var(--vinho-escuro); color: #f3dbe4; padding: 28px 0 32px; margin-top: 20px; font-size: .9rem; }
-.rodape .logo { color: #fff; display: block; margin-bottom: 8px; }
+.rodape { background: var(--vinho-escuro); color: #fbe3ec; padding: 28px 0 32px; margin-top: 20px; font-size: .9rem; }
+.rodape .logo { color: #fff; margin-bottom: 10px; }
+.rodape .logo small { color: #f6c6d7; }
 .rodape a { text-decoration: underline; }
 .rodape p { margin: 4px 0; }
 

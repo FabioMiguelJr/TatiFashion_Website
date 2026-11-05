@@ -44,6 +44,7 @@
   }
   window.addEventListener("storage", (e) => { if (e.key === CHAVE) atualizarContador(); });
 
+  const LOGO = (cls = "logo") => `<span class="${cls}"><img src="img/flor.svg" alt=""><span class="logo-texto">TatiFashion<small>Modas</small></span></span>`;
   const ICONES = {
     menu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
     sacola: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
@@ -58,7 +59,7 @@
       <header class="topo">
         <div class="container">
           <button class="icone-btn" id="abrir-menu" aria-label="Abrir menu">${ICONES.menu}</button>
-          <a href="index.html" class="logo">TatiFashion<span>Modas</span></a>
+          <a href="index.html" aria-label="TatiFashion Modas, início">${LOGO()}</a>
           <div class="topo-acoes">
             <a class="icone-btn" href="catalogo.html#busca" aria-label="Buscar">${ICONES.busca}</a>
             <a class="icone-btn" href="sacola.html" aria-label="Sacola">${ICONES.sacola}<span class="contador" id="contador-sacola" hidden>0</span></a>
@@ -68,7 +69,7 @@
       <nav class="menu" id="menu" aria-hidden="true">
         <div class="menu-fundo" data-fechar></div>
         <div class="menu-painel">
-          <span class="logo">TatiFashion</span>
+          <span style="padding:0 20px 16px;border-bottom:1px solid var(--borda)">${LOGO()}</span>
           <a href="index.html">Início</a>
           <a href="catalogo.html">Todos os produtos</a>
           <a href="sacola.html">Minha sacola</a>
@@ -89,7 +90,7 @@
     r.outerHTML = `
       <footer class="rodape">
         <div class="container">
-          <span class="logo">TatiFashion Modas</span>
+          ${LOGO()}
           <p>Moda feminina com carinho, do nosso jeito.</p>
           <p>Encontre a gente nas feirinhas, igrejas e eventos da região.</p>
           ${LOJA.instagram ? `<p><a href="${esc(LOJA.instagram)}" target="_blank" rel="noopener">Siga no Instagram</a></p>` : ""}
